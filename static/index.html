@@ -146,6 +146,54 @@
         opacity: 0.7;
       }
 
+      /* ---- 性别 / 偏好选择器 ---- */
+      .selector-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .selector-label {
+        font-size: 13px;
+        color: var(--muted);
+        white-space: nowrap;
+        min-width: 2.5em;
+        text-align: right;
+      }
+      .pill-group {
+        display: flex;
+        gap: 6px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px;
+      }
+      .pill {
+        font-family: var(--sans);
+        font-size: 13px;
+        padding: 5px 16px;
+        border-radius: 999px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+        letter-spacing: 0.04em;
+      }
+      .pill:hover {
+        color: var(--text);
+        background: var(--surface-2);
+        box-shadow: none;
+        transform: none;
+      }
+      .pill.active {
+        background: var(--accent-soft);
+        color: var(--accent);
+        box-shadow: 0 0 12px -4px var(--accent-dim);
+      }
+      .pill:active {
+        transform: none;
+      }
+
       /* ---- 按钮 ---- */
       button {
         font-family: var(--sans);
@@ -458,6 +506,21 @@
         <p class="sub">
           和一个陌生人说几句话。<br />没有名字,没有记录,看完就烧掉。
         </p>
+        <div class="selector-group">
+          <span class="selector-label">我是</span>
+          <div class="pill-group" id="genderGroup">
+            <button type="button" class="pill active" data-value="male">男</button>
+            <button type="button" class="pill" data-value="female">女</button>
+          </div>
+        </div>
+        <div class="selector-group">
+          <span class="selector-label">想找</span>
+          <div class="pill-group" id="seekingGroup">
+            <button type="button" class="pill active" data-value="">随便</button>
+            <button type="button" class="pill" data-value="opposite">异性</button>
+            <button type="button" class="pill" data-value="same">同性</button>
+          </div>
+        </div>
         <button id="start" class="primary">找一个人说说话</button>
         <p class="pledge">不保存记录 · 实时对话 · 阅后即焚</p>
       </div>
@@ -591,7 +654,11 @@
         const secretToken = "Mingda2026"; // 必须与 Go 后端的验证字符完全一致
         const proto = location.protocol === "https:" ? "wss" : "ws";
         // 将安全 Token 注入 Query 参数，随握手包发送给 Go 的拦截层
-        const url = proto + "://" + location.host + "/ws?secret=" + secretToken;
+        const gender = getPillValue("genderGroup");
+        const seeking = getPillValue("seekingGroup");
+        let url = proto + "://" + location.host + "/ws?secret=" + secretToken;
+        if (gender) url += "&gender=" + gender;
+        if (seeking) url += "&seeking=" + seeking;
         ws = new WebSocket(url);
         // ─────────────────────────────────────────────────────────────
 
@@ -672,6 +739,23 @@
         $("rematch").textContent = "再试试";
         $("rematch").classList.remove("hide");
         show("matching");
+      }
+
+      // pill 选择器逻辑
+      function setupPillGroup(groupId) {
+        const group = $(groupId);
+        group.querySelectorAll(".pill").forEach((pill) => {
+          pill.onclick = () => {
+            group.querySelectorAll(".pill").forEach((p) => p.classList.remove("active"));
+            pill.classList.add("active");
+          };
+        });
+      }
+      setupPillGroup("genderGroup");
+      setupPillGroup("seekingGroup");
+
+      function getPillValue(groupId) {
+        return $(groupId).querySelector(".pill.active")?.dataset.value ?? "";
       }
 
       $("start").onclick = connect;

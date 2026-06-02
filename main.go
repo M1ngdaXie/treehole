@@ -82,14 +82,15 @@ var matchbox = make(chan mmMsg, 256) // matchmaker 唯一入口;FIFO 保证 Gone
 // Client 是一个连接着的人的 actor。没有任何身份信息,不存历史消息。
 // partner 是私有状态,只有本人的 loop() 读写 —— 不需要任何锁。
 type Client struct {
-	conn *websocket.Conn
-	ip   string // 限流键
-
-	ctrl chan ctrlMsg  // 控制信箱(matchmaker 投)
-	in   chan inMsg    // 入站信箱(自己的 readPump + 对方的聊天)
-	out  chan []byte   // 出站信箱(writePump 抽干写回连接)
-	done chan struct{} // 关闭即焚信号,close 一次
-	once sync.Once
+	conn    *websocket.Conn
+	ip      string        // 限流键
+	gender  string        // "male" | "female" | ""
+	seeking string        // "opposite" | "same" | "" (空==随便)
+	ctrl    chan ctrlMsg  // 控制信箱(matchmaker 投)
+	in      chan inMsg    // 入站信箱(自己的 readPump + 对方的聊天)
+	out     chan []byte   // 出站信箱(writePump 抽干写回连接)
+	done    chan struct{} // 关闭即焚信号,close 一次
+	once    sync.Once
 
 	partner *Client // 仅 loop() 访问
 
@@ -268,7 +269,7 @@ func (c *Client) writePump() {
 // ───────────────────────── matchmaker(全局唯一 actor)─────────────────────────
 
 func matchmaker() {
-	var waiting *Client                   // 至多一个等待者
+	var waiting []*Client                 // 至多一个等待者
 	partners := make(map[*Client]*Client) // 当前配对图,仅本 goroutine 访问
 
 	// 统计核心变量 (由于收拢在单 goroutine 处理，天然无锁竞态)
@@ -278,7 +279,7 @@ func matchmaker() {
 	// 内部辅助监控看板
 	logStatus := func() {
 		log.Printf("[看板] 实时在线总人数: %d | 正在聊天的配对数: %d | 等待队列有无人: %t",
-			totalUsers, len(partners)/2, waiting != nil)
+			totalUsers, len(partners)/2, len(waiting) > 0)
 	}
 
 	unpair := func(c *Client) {
@@ -300,16 +301,7 @@ func matchmaker() {
 		p.sendCtrl(ctrlMsg{kind: ctrlPartnerLeft}) // 非阻塞
 	}
 
-	enqueue := func(c *Client) {
-		if waiting == nil {
-			waiting = c
-			return
-		}
-		if waiting == c { // 不能把人配给自己
-			return
-		}
-		o := waiting
-		waiting = nil
+	pair := func(c *Client, o *Client) {
 		partners[c] = o
 		partners[o] = c
 
@@ -321,6 +313,18 @@ func matchmaker() {
 
 		c.sendCtrl(ctrlMsg{kind: ctrlMatched, partner: o})
 		o.sendCtrl(ctrlMsg{kind: ctrlMatched, partner: c})
+	}
+
+	enqueue := func(c *Client) {
+		for i, w := range waiting {
+			if matches(c, w) {
+				waiting = append(waiting[:i], waiting[i+1:]...)
+				pair(c, w)
+				return
+			}
+		}
+		waiting = append(waiting, c)
+		log.Printf("队列当前等待人数 %d", len(waiting))
 	}
 
 	for m := range matchbox {
@@ -343,13 +347,31 @@ func matchmaker() {
 			stayDuration := time.Since(m.c.connectTime).Round(time.Second)
 			log.Printf("[用户离开] 用户(%s) 已断开，在树洞内总停留时长: %v", m.c.ip, stayDuration)
 
-			if waiting == m.c {
-				waiting = nil
+			for i, w := range waiting {
+				if w == m.c {
+					waiting = append(waiting[:i], waiting[i+1:]...)
+					break
+				}
 			}
 			unpair(m.c) // 若已配对则通知对方
 			logStatus()
 		}
 	}
+}
+func matches(a, b *Client) bool {
+	// 任一方没有 seeking 偏好 → 随便配，直接匹配
+	if a.seeking == "" || b.seeking == "" {
+		return true
+	}
+	// 双方都有 seeking 偏好，但任一方没有填性别 → 无法判断，不匹配
+	if a.gender == "" || b.gender == "" {
+		return false
+	}
+	sameGender := a.gender == b.gender
+	// 双方的 seeking 必须互相满足
+	aOK := (a.seeking == "opposite" && !sameGender) || (a.seeking == "same" && sameGender)
+	bOK := (b.seeking == "opposite" && !sameGender) || (b.seeking == "same" && sameGender)
+	return aOK && bOK
 }
 
 // ───────────────────────── 限流(标准库令牌桶,按 IP)─────────────────────────
@@ -493,6 +515,8 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	// ──────────────────────── 核心公网防线 ────────────────────────
 	// 从 URL 的 Query 参数中提取我们约定的暗号 "secret"
 	secret := r.URL.Query().Get("secret")
+	gender := r.URL.Query().Get("gender")
+	seeking := r.URL.Query().Get("seeking")
 	wssecret := os.Getenv("WS_SECRET")
 	if wssecret == "" {
 		wssecret = "Mingda2026"
@@ -513,6 +537,8 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	c := &Client{
 		conn:        conn,
 		ip:          clientIP(r),
+		gender:      gender,
+		seeking:     seeking,
 		ctrl:        make(chan ctrlMsg, ctrlBuf),
 		in:          make(chan inMsg, inBuf),
 		out:         make(chan []byte, outBuf),
