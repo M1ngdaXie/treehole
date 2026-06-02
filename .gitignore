@@ -1,0 +1,24 @@
+# 编译产物
+/treehole
+*.exe
+*.test
+*.out
+
+# Go
+bin/
+dist/
+
+# Fly.io
+.fly/
+
+# IDE
+.idea/
+
+# 系统
+.DS_Store
+.env
+CLAUDE.md
+Project.md
+
+# 临时/日志
+*.log

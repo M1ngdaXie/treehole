@@ -1,0 +1,14 @@
+# 构建产物 / 本机文件,别进镜像上下文
+bin/treehole
+*.exe
+*.test
+*.out
+*.log
+.git
+.gitignore
+.DS_Store
+Project.md
+.fly/
+fly.toml
+Dockerfile
+.dockerignore

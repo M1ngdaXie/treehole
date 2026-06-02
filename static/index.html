@@ -1,0 +1,699 @@
+
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b0d11" />
+    <title>夜话</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ============================================================
+         夜话 · Quiet Nocturne
+         深夜里两个陌生人在黑暗中低声交谈。近黑底色 + 一点冷月蓝微光,
+         标题用中文衬线体,动效极克制——只在配对、消息、焚毁这种关键
+         时刻轻轻发生。没有卡片黑框,内容靠留白与居中自然成形。
+         ============================================================ */
+      :root {
+        --bg: #0b0d11;
+        --bg-2: #10131a;
+        --surface: #161a22;
+        --surface-2: #1c212b;
+        --mine: #2f4256; /* 自己的气泡:沉静的蓝灰 */
+        --text: #e9ebf0;
+        --muted: #7e8593;
+        --line: #20242d;
+        --accent: #7cb0ff; /* 冷月蓝:夜空里的一点微光 */
+        --accent-dim: rgba(124, 176, 255, 0.5);
+        --accent-soft: rgba(124, 176, 255, 0.12);
+        --danger: #e0685f;
+        --serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+        --sans:
+          system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        font-family: var(--sans);
+        color: var(--text);
+        background: var(--bg);
+        /* 氛围:顶部一束极淡的月光,底部更深,营造"夜"的纵深而非纯黑块 */
+        background-image:
+          radial-gradient(
+            140% 80% at 50% -10%,
+            rgba(124, 176, 255, 0.06) 0%,
+            transparent 55%
+          ),
+          linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 70%);
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      /* 极淡的星点纹理叠在最上层,给死黑的背景一点颗粒呼吸感 */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.14), transparent),
+          radial-gradient(1px 1px at 75% 18%, rgba(255, 255, 255, 0.1), transparent),
+          radial-gradient(1px 1px at 60% 70%, rgba(255, 255, 255, 0.08), transparent),
+          radial-gradient(1px 1px at 35% 85%, rgba(255, 255, 255, 0.1), transparent),
+          radial-gradient(1px 1px at 88% 60%, rgba(255, 255, 255, 0.07), transparent);
+        opacity: 0.6;
+      }
+
+      /* 内容居中、留白成形 —— 不画任何边框/卡片 */
+      #app {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+        height: 100dvh;
+        max-height: 800px;
+        display: flex;
+        flex-direction: column;
+        padding: 22px 18px;
+      }
+
+      .center {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 18px;
+      }
+
+      /* ---- 文字层次 ---- */
+      h1 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 34px;
+        letter-spacing: 0.16em; /* 衬线大字疏排,像题在信纸上 */
+        margin: 0;
+        background: linear-gradient(180deg, #fff 0%, #c7d4ea 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .brand {
+        position: relative;
+      }
+      /* 标题下一道渐隐的细光线,呼应"夜空" */
+      .brand::after {
+        content: "";
+        display: block;
+        width: 54px;
+        height: 1px;
+        margin: 16px auto 0;
+        background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+      }
+      p.sub {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.9;
+        margin: 0;
+        max-width: 30ch;
+      }
+      /* 隐私承诺:一行克制的小字,像落款,不抢标题 */
+      p.pledge {
+        margin: 6px 0 0;
+        font-size: 11.5px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        opacity: 0.7;
+      }
+
+      /* ---- 按钮 ---- */
+      button {
+        font-family: var(--sans);
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 12px 30px;
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          background 0.2s,
+          transform 0.1s,
+          box-shadow 0.2s;
+      }
+      button:hover {
+        border-color: var(--accent-dim);
+        background: var(--accent-soft);
+        box-shadow: 0 0 24px -8px var(--accent-dim);
+      }
+      button:active {
+        transform: scale(0.97);
+      }
+      /* 主行动按钮:被一圈柔光衬着,像黑暗里唯一亮起的入口 */
+      .primary {
+        border-color: var(--accent-dim);
+        color: #eaf1ff;
+        background: var(--accent-soft);
+        box-shadow: 0 0 30px -10px var(--accent-dim);
+      }
+      .primary:hover {
+        background: rgba(124, 176, 255, 0.18);
+        box-shadow: 0 0 38px -8px var(--accent-dim);
+      }
+      button.mini {
+        padding: 6px 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      button.mini:hover {
+        color: var(--text);
+      }
+
+      .hide {
+        display: none !important;
+      }
+
+      /* ---- 聊天头部 ---- */
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 4px 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      #status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      /* 在线小绿点,呼吸 */
+      #status::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+        animation: breathe 2.4s ease-in-out infinite;
+      }
+      .head-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #timer {
+        font-variant-numeric: tabular-nums;
+        font-size: 13px;
+        letter-spacing: 0.05em;
+        transition: color 0.4s;
+      }
+      #timer.warn {
+        color: var(--danger);
+        animation: breathe 1s ease-in-out infinite;
+      }
+
+      /* ---- 消息流 ---- */
+      #log {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px 2px;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: var(--line) transparent;
+      }
+      #log::-webkit-scrollbar {
+        width: 6px;
+      }
+      #log::-webkit-scrollbar-thumb {
+        background: var(--line);
+        border-radius: 3px;
+      }
+      .b {
+        max-width: 76%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        font-size: 15px;
+        line-height: 1.6;
+        word-break: break-word;
+        animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+      }
+      .b.mine {
+        align-self: flex-end;
+        background: var(--mine);
+        border-bottom-right-radius: 5px; /* 微微的"尾巴"指向自己 */
+        color: #f2f5fb;
+      }
+      .b.other {
+        align-self: flex-start;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-bottom-left-radius: 5px;
+      }
+      .note {
+        align-self: center;
+        color: var(--muted);
+        font-size: 12.5px;
+        text-align: center;
+        line-height: 1.7;
+        max-width: 90%;
+        font-style: italic;
+        animation: rise 0.32s ease both;
+      }
+
+      /* ---- 输入栏 ---- */
+      .row {
+        display: flex;
+        gap: 10px;
+        padding-top: 12px;
+        align-items: center;
+      }
+      input {
+        flex: 1;
+        min-width: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 14px;
+        padding: 13px 16px;
+        font-size: 16px; /* ≥16px:iOS 聚焦不自动放大 */
+        font-family: var(--sans);
+        outline: none;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      input::placeholder {
+        color: var(--muted);
+      }
+      input:focus {
+        border-color: var(--accent-dim);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+      /* 发送键:圆形,聚一束柔光 */
+      #send {
+        flex: none;
+        width: 46px;
+        height: 46px;
+        padding: 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 19px;
+        line-height: 1;
+        color: var(--accent);
+        border-color: var(--accent-soft);
+        background: var(--accent-soft);
+      }
+      #send:hover {
+        background: rgba(124, 176, 255, 0.2);
+      }
+
+      /* ---- 寻找中:一圈向外扩散的涟漪 ---- */
+      .pulse {
+        position: relative;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 16px var(--accent);
+      }
+      .pulse::before,
+      .pulse::after {
+        content: "";
+        position: absolute;
+        inset: 50%;
+        width: 14px;
+        height: 14px;
+        margin: -7px 0 0 -7px;
+        border-radius: 50%;
+        border: 1px solid var(--accent);
+        animation: ripple 2.4s ease-out infinite;
+      }
+      .pulse::after {
+        animation-delay: 1.2s;
+      }
+
+      /* ---- 焚毁:一簇微微跳动的火 ---- */
+      .flame {
+        font-size: 38px;
+        animation: flicker 2.6s ease-in-out infinite;
+        filter: drop-shadow(0 0 14px rgba(224, 104, 95, 0.5));
+      }
+
+      /* ============ 动画 ============ */
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+      @keyframes ripple {
+        0% {
+          transform: scale(1);
+          opacity: 0.7;
+        }
+        100% {
+          transform: scale(4.5);
+          opacity: 0;
+        }
+      }
+      @keyframes flicker {
+        0%,
+        100% {
+          transform: scale(1) rotate(-1deg);
+        }
+        50% {
+          transform: scale(1.08) rotate(1.5deg);
+        }
+      }
+      /* 入场:welcome / matching / burn 的内容逐个淡入 */
+      .center > * {
+        animation: rise 0.6s ease both;
+      }
+      .center > *:nth-child(2) {
+        animation-delay: 0.1s;
+      }
+      .center > *:nth-child(3) {
+        animation-delay: 0.2s;
+      }
+      .center > *:nth-child(4) {
+        animation-delay: 0.3s;
+      }
+
+      /* ============ 响应式 ============ */
+      @media (min-width: 480px) {
+        .b {
+          max-width: 70%;
+        }
+      }
+      @media (max-width: 360px) {
+        #app {
+          padding: 16px 13px;
+        }
+        h1 {
+          font-size: 28px;
+        }
+        .b {
+          max-width: 84%;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+        }
+        button:active {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="welcome" class="center">
+        <h1 class="brand">夜话</h1>
+        <p class="sub">
+          和一个陌生人说几句话。<br />没有名字,没有记录,看完就烧掉。
+        </p>
+        <button id="start" class="primary">找一个人说说话</button>
+        <p class="pledge">不保存记录 · 实时对话 · 阅后即焚</p>
+      </div>
+
+      <div id="matching" class="center hide">
+        <div class="pulse" id="pulse"></div>
+        <p class="sub" id="matchText">正在为你寻找一个愿意倾听的人…</p>
+        <button id="rematch" class="hide">再遇见一个人</button>
+      </div>
+
+      <div
+        id="chat"
+        class="hide"
+        style="flex: 1; display: flex; flex-direction: column; min-height: 0"
+      >
+        <header>
+          <span id="status">已连接一位陌生人</span>
+          <span class="head-right">
+            <button id="skip" class="mini">换一个人</button>
+            <span id="timer"></span>
+          </span>
+        </header>
+        <div id="log"></div>
+        <div class="row">
+          <input
+            id="input"
+            placeholder="轻轻说点什么…"
+            maxlength="140"
+            autocomplete="off"
+          />
+          <button id="send" aria-label="发送">↑</button>
+        </div>
+      </div>
+
+      <div id="burn" class="center hide">
+        <div class="flame">🔥</div>
+        <h1 style="font-size: 19px; letter-spacing: 0.1em">
+          这段对话已经烧掉了
+        </h1>
+        <p class="sub">你们谁也找不回谁。<br />但刚才那几句,是真的发生过。</p>
+        <button id="again" class="primary">再遇见一个人</button>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const stages = ["welcome", "matching", "chat", "burn"];
+      function show(s) {
+        stages.forEach((x) => $(x).classList.toggle("hide", x !== s));
+      }
+
+      const BURN = 900;
+      let ws = null,
+        left = BURN,
+        timerId = null,
+        ended = false;
+
+      // 控制指令:聊天软件通用的斜杠命令。服务端只在整条消息恰好等于 "/skip"
+      // 时才识别,普通聊天不会被误吞。普通聊天仍直接发裸文本。
+      function sendCtrl(cmd) {
+        if (ws && ws.readyState === 1) ws.send(cmd);
+      }
+      // 回到"寻找中"界面(skip / 对方离开后重新配对都走这里,复用同一条存活的连接)。
+      function backToMatching(text) {
+        if (timerId) clearInterval(timerId);
+        $("log").innerHTML = "";
+        $("rematch").classList.add("hide");
+        $("pulse").classList.remove("hide");
+        $("matchText").textContent = text || "正在为你寻找一个愿意倾听的人…";
+        show("matching");
+      }
+
+      const crisis = ["自杀", "想死", "不想活", "活不下去", "轻生", "割腕"];
+
+      function log(text, cls) {
+        const d = document.createElement("div");
+        if (cls === "note") {
+          d.className = "note";
+        } else {
+          d.className = "b " + cls;
+        }
+        d.textContent = text;
+        $("log").appendChild(d);
+        $("log").scrollTop = $("log").scrollHeight;
+      }
+
+      function fmt(s) {
+        const m = Math.floor(s / 60),
+          x = s % 60;
+        return m + ":" + (x < 10 ? "0" : "") + x;
+      }
+
+      function startTimer() {
+        // 先清掉可能残留的旧计时器:否则 skip/重新配对时会有两个 setInterval
+        // 同时抢着减 left,倒计时一秒掉两秒。
+        if (timerId) clearInterval(timerId);
+        left = BURN;
+        $("timer").textContent = fmt(left);
+        $("timer").classList.remove("warn");
+        timerId = setInterval(() => {
+          left--;
+          if (left <= 0) {
+            clearInterval(timerId);
+            burn();
+            return;
+          }
+          $("timer").textContent = fmt(left);
+          if (left === 20) $("timer").classList.add("warn");
+          if (left <= 10) log("还剩 " + left + " 秒,这段话就要消失了…", "note");
+        }, 1000);
+      }
+
+      function burn() {
+        if (ended) return;
+        ended = true;
+        if (timerId) clearInterval(timerId);
+        if (ws) {
+          try {
+            ws.close();
+          } catch (e) {}
+        }
+        $("log").innerHTML = "";
+        show("burn");
+      }
+
+      function connect() {
+        ended = false;
+        show("matching");
+        
+        // ──────────────────────── 核心公网防线 ────────────────────────
+        const secretToken = "Mingda2026"; // 必须与 Go 后端的验证字符完全一致
+        const proto = location.protocol === "https:" ? "wss" : "ws";
+        // 将安全 Token 注入 Query 参数，随握手包发送给 Go 的拦截层
+        const url = proto + "://" + location.host + "/ws?secret=" + secretToken;
+        ws = new WebSocket(url);
+        // ─────────────────────────────────────────────────────────────
+
+        ws.onmessage = (ev) => {
+          const raw = ev.data;
+          if (raw.startsWith("S:")) {
+            // 系统消息
+            const kind = raw.slice(2);
+            if (kind === "matched") {
+              // 每次配上(含 skip / 重新配对后)都进入聊天并重置倒计时。
+              show("chat");
+              $("log").innerHTML = "";
+              // 开口前再确认一次承诺:这段对话不落地。
+              log("你们已相遇 · 不保存记录,看完即焚", "note");
+              startTimer();
+              $("input").focus();
+            } else if (kind === "still_waiting") {
+              // 服务端已停止等待:停掉转圈,告诉用户现在没人,需主动重新匹配。
+              noOneOnline();
+            } else if (kind === "partner_left") {
+              // 对方离开/换人了。连接仍存活——不焚毁,给"再遇见一个人"按钮重新配对。
+              partnerLeft();
+            } else if (kind === "rate_limited") {
+              // 被限流:温和提示,不改变界面、不断连。
+              log("慢一点,稍等再发…", "note");
+            }
+          } else if (raw.startsWith("M:")) {
+            // 对方的话
+            log(raw.slice(2), "other");
+          }
+        };
+        ws.onclose = () => {
+          if (!ended) burn();
+        };
+        ws.onerror = () => {
+          $("matchText").textContent = "连接出错了,请刷新重试。";
+        };
+      }
+
+      function send() {
+        const v = $("input").value.trim();
+        if (!v || !ws || ws.readyState !== 1 || ended) return;
+        for (const w of crisis) {
+          if (v.includes(w)) {
+            log(v, "mine");
+            $("input").value = "";
+            log(
+              "听到你这样说,我有点担心你。如果此刻很难熬,可以拨打 988 心理援助热线(24小时)。有人愿意认真听说了。",
+              "note",
+            );
+            return;
+          }
+        }
+        ws.send(v);
+        log(v, "mine"); // 本地直接回显自己的话
+        $("input").value = "";
+      }
+
+      // 对方离开:停聊天计时,清空对话框,进入"寻找中"界面,
+      // 显示提示与"再遇见一个人"按钮。不主动重新配对——让用户自己决定。
+      function partnerLeft() {
+        if (ended) return;
+        if (timerId) clearInterval(timerId);
+        $("log").innerHTML = ""; // 上一段对话立即消失
+        $("pulse").classList.add("hide"); // 此刻不是在找,而是在等用户决定
+        $("matchText").textContent = "对方离开了。";
+        $("rematch").textContent = "再遇见一个人";
+        $("rematch").classList.remove("hide");
+        show("matching");
+      }
+
+      // 等待超时:服务端已停止等待。停掉转圈,告诉用户现在没人,
+      // 给一个"再试试"按钮,点了才重新发起匹配(不自动重排队)。
+      function noOneOnline() {
+        if (ended) return;
+        $("pulse").classList.add("hide");
+        $("matchText").textContent = "现在还没有人在线,过会儿再来试试。";
+        $("rematch").textContent = "再试试";
+        $("rematch").classList.remove("hide");
+        show("matching");
+      }
+
+      $("start").onclick = connect;
+      $("again").onclick = () => show("welcome");
+      $("send").onclick = send;
+      $("input").addEventListener("keydown", (e) => {
+        // 输入法(中文/日文等)组字时按回车是为了确认候选词上屏,不能当发送。
+        // isComposing / keyCode 229 都是"正在用 IME 组字"的标志,此时直接忽略。
+        if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
+          e.preventDefault();
+          send();
+        }
+      });
+      // 换一个人 / 对方离开后再配一个 —— 同一个动作:解除当前配对(若有,服务端会
+      // 通知对方),自己回到寻找中等下一个人。skip 和 next 本是一回事,统一发 /skip。
+      function nextPerson() {
+        sendCtrl("/skip");
+        backToMatching();
+      }
+      $("skip").onclick = nextPerson;
+      $("rematch").onclick = nextPerson;
+    </script>
+  </body>
+</html>
+
